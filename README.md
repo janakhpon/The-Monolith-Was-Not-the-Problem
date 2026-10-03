@@ -6,6 +6,22 @@ _A small team's journey from a simple Next.js app to a small fleet of background
 
 ---
 
+## Editorial correction — 2026-10-03
+
+The original article described a five-minute limit in the deployment it discussed.
+That should not be read as a universal Vercel limit today. Duration depends on the
+plan, runtime and configuration. The general guidance below now links to the
+current documentation; the historical deployment configuration was not rechecked.
+
+The file-metadata example below also needs a narrower claim. It skips sequential
+replays after a success marker exists. It does not prevent concurrent execution or
+make a side effect atomic with writing that marker. No new production incident or
+fix is established by this correction.
+
+The queue examples illustrate background-work patterns. They should not be used to
+identify the implementation behind a particular employer's webhook incident without
+checking that system's own record.
+
 ## Start Here: The Architecture Argument You Probably Heard
 
 The common framing goes something like this:
@@ -72,11 +88,18 @@ This matters because we were running on Vercel, and the platform shapes what you
 
 Vercel's serverless functions are designed for fast, stateless requests. But they have hard limits for background work:
 
-- **5-minute execution timeout.** After that, Vercel kills the function regardless of what it's doing.
+- **Bounded execution duration.** A function must complete within its configured
+  duration. The limit depends on the plan, runtime and configuration. See
+  [Vercel's function limits](https://vercel.com/docs/functions/limitations), checked
+  3 October 2026. The five-minute limit in this story describes its historical setup.
 - **Functions freeze after responding.** Once you send a response, the runtime is not guaranteed to stay alive. Any work scheduled after the response may not complete.
 - **No persistent background processes.** There is no way to run a long-lived worker inside Vercel.
 
-Vercel does have `waitUntil()` and Vercel Cron, which help for short tasks. But they are not the right tool for multi-minute reconciliation jobs. For that, you need a separate service entirely.
+`waitUntil()` can extend work beyond the response but not beyond the function's
+maximum duration ([Vercel API reference](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package#waituntil),
+checked 3 October 2026). A reconciliation job needs an execution model suited to its
+runtime and recovery requirements. In this story, the choice was a separate worker;
+it is not the only available approach for every multi-minute job.
 
 ---
 
@@ -256,7 +279,8 @@ Jobs in the DLQ do not retry. They just sit there until you look at them. When y
 
 When jobs retry, they will sometimes run the same job more than once. That is expected. What matters is that running a job twice produces the same result as running it once.
 
-One practical pattern: check before acting, then mark when done.
+A success marker can skip a sequential replay after an earlier run completed.
+This simplified example shows that optimization:
 
 ```typescript
 async function processFile(fileKey: string) {
@@ -273,7 +297,15 @@ async function processFile(fileKey: string) {
 }
 ```
 
-The job checks if it already ran. If yes, skip. If no, do the work and record the result. Safe either way.
+This check does not make the operation safe under every retry. Two workers can both
+read an unset marker and both call `compress`. A crash after the side effect but
+before `setMetadata` leaves the next run unable to tell that the work happened.
+
+Correctness depends on the operation and storage contract. The side effect needs to
+be safe to repeat, or coordinated with a durable identity and a recovery protocol.
+An atomic claim can coordinate workers, but does not by itself close the crash
+window between an external effect and recording completion. The snippet omits those
+requirements and is not a complete idempotency implementation.
 
 Design for this from the beginning. It is much harder to retrofit.
 
@@ -332,7 +364,7 @@ These costs are real. They were justified because the workloads genuinely could 
 
 If you are a team of two to five people in early stages, do not start with distributed workers.
 
-A Next.js monolith on Vercel gives you a lot: one codebase, simple deployments, fast development loops, easy debugging. The trade-off is real — you will hit the 5-minute timeout if background jobs get heavy. But that problem appears later, after you have real users and real usage patterns telling you what the system actually needs.
+A Next.js monolith on Vercel gives you a lot: one codebase, simple deployments, fast development loops, easy debugging. The trade-off is real — you can hit the configured execution limit if background jobs get heavy. But that problem appears later, after you have real users and real usage patterns telling you what the system actually needs.
 
 When you do hit it, extract only the part that is breaking. Leave everything else alone.
 
