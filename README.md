@@ -2,7 +2,7 @@
 
 _A small team's journey from a simple Next.js app to a small fleet of background workers — and why we barely touched the original code._
 
-_Corrected 3 October 2026: the claims on execution limits and retry safety were narrowed, and a caution was added. The note is at the end._
+_Corrected 3 October 2026. I narrowed the claims on execution limits and retry safety, and added a caution. Details are at the end._
 
 ![Article cover - A Next.js monolith hitting a timeout, and the slow work moved to a message queue and background workers](./assets/monolith_to_workers.avif)
 
