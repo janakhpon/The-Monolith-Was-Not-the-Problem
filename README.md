@@ -2,25 +2,11 @@
 
 _A small team's journey from a simple Next.js app to a small fleet of background workers — and why we barely touched the original code._
 
-![](./assets/monolith_to_workers.avif)
+_Corrected 3 October 2026: the claims on execution limits and retry safety were narrowed, and a caution was added. The note is at the end._
+
+![Article cover - A Next.js monolith hitting a timeout, and the slow work moved to a message queue and background workers](./assets/monolith_to_workers.avif)
 
 ---
-
-## Editorial correction — 2026-10-03
-
-The original article described a five-minute limit in the deployment it discussed.
-That should not be read as a universal Vercel limit today. Duration depends on the
-plan, runtime and configuration. The general guidance below now links to the
-current documentation; the historical deployment configuration was not rechecked.
-
-The file-metadata example below also needs a narrower claim. It skips sequential
-replays after a success marker exists. It does not prevent concurrent execution or
-make a side effect atomic with writing that marker. No new production incident or
-fix is established by this correction.
-
-The queue examples illustrate background-work patterns. They should not be used to
-identify the implementation behind a particular employer's webhook incident without
-checking that system's own record.
 
 ## Start Here: The Architecture Argument You Probably Heard
 
@@ -395,3 +381,21 @@ The system we have now is not something we could have designed before running th
 Start simple. Watch carefully. Change only what must change.
 
 Everything else — keep it boring.
+
+---
+
+## Editorial correction — 2026-10-03
+
+The original article described a five-minute limit in the deployment it discussed.
+That should not be read as a universal Vercel limit today. Duration depends on the
+plan, runtime and configuration. The general guidance above now links to the
+current documentation; the historical deployment configuration was not rechecked.
+
+The file-metadata example above also needs a narrower claim. It skips sequential
+replays after a success marker exists. It does not prevent concurrent execution or
+make a side effect atomic with writing that marker. No new production incident or
+fix is established by this correction.
+
+The queue examples illustrate background-work patterns. They should not be used to
+identify the implementation behind a particular employer's webhook incident without
+checking that system's own record.
